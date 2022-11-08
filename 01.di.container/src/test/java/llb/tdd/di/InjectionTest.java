@@ -31,7 +31,7 @@ public class InjectionTest {
 
     private Dependency dependency = mock(Dependency.class);
     private Provider<Dependency> dependencyProvider = mock(Provider.class);
-    ParameterizedType dependencyProviderType;
+    private ParameterizedType dependencyProviderType;
     private Context context = mock(Context.class);
 
     @BeforeEach
