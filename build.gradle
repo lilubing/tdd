@@ -1,23 +1,47 @@
-plugins {
-    id 'java'
+//配置所有项目公共内容
+allprojects {
+    //指定需要的插件
+    //指定语言
+    apply plugin: 'java'
+    //指定编辑器
+    apply plugin: 'idea'
+    //配置项目信息
+    group 'llb.tdd.di'
+    version '1.0-SNAPSHOT'
+
+    //配置仓库
+    repositories{
+        mavenLocal()
+        mavenCentral()
+    }
 }
 
-group 'llb.tdd.di'
-version '1.0-SNAPSHOT'
+//配置子工程
+subprojects {
+    //指定编译版本
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    //配置字符编码
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
 
-repositories {
-    mavenCentral()
-}
+    //配置全局依赖版本信息
+    ext {
+        junitVersion = '5.8.2'
+    }
 
-dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    //配置子模块依赖
+    dependencies {
+        testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
+        testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+        testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.8.2")
+        testRuntimeOnly("org.junit.platform:junit-platform-runner:1.8.2")
+        testImplementation("org.mockito:mockito-core:4.3.1")
+    }
 }
 
 test {
     useJUnitPlatform()
-}
-
-subprojects {
-
 }
