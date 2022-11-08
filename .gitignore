@@ -232,3 +232,4 @@ rebel.xml
 /gradle/*
 /build
 .gradle
+*/build/*
