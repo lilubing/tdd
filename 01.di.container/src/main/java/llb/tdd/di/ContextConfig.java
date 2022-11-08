@@ -1,25 +1,21 @@
 package llb.tdd.di;
 
+import llb.tdd.di.ContextConfig.Component;
 import jakarta.inject.Provider;
 import jakarta.inject.Qualifier;
 import jakarta.inject.Scope;
 import jakarta.inject.Singleton;
-
-import javax.script.Bindings;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static java.util.Arrays.stream;
-import static java.util.List.of;
-import static java.util.stream.Collectors.*;
 import static llb.tdd.di.ContextConfigError.circularDependencies;
 import static llb.tdd.di.ContextConfigError.unsatisfiedResolution;
 import static llb.tdd.di.ContextConfigException.illegalAnnotation;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.*;
 
 public class ContextConfig {
 
@@ -90,8 +86,9 @@ public class ContextConfig {
         return scope.<ComponentProvider<?>>map(s -> scoped(s, injectionProvider)).orElse(injectionProvider);
     }
     private ComponentProvider<?> scoped(Annotation scope, ComponentProvider<?> provider) {
-        if (!scopes.containsKey(scope.annotationType()))
+        if (!scopes.containsKey(scope.annotationType())) {
             throw ContextConfigException.unknownScope(scope.annotationType());
+        }
         return scopes.get(scope.annotationType()).create(provider);
     }
     private void checkDependencies(Component component, Stack<Component> visiting) {
@@ -126,8 +123,9 @@ public class ContextConfig {
         }
         private static Map<Class<?>, List<Annotation>> parse(Class<?> type, Annotation[] annotations, Class<? extends Annotation>... allowed) {
             Map<Class<?>, List<Annotation>> annotationGroups = stream(annotations).collect(groupingBy(allow(allowed), toList()));
-            if (annotationGroups.containsKey(Illegal.class))
+            if (annotationGroups.containsKey(Illegal.class)) {
                 throw illegalAnnotation(type, annotationGroups.get(Illegal.class));
+            }
             return annotationGroups;
         }
         private static Function<Annotation, Class<?>> allow(Class<? extends Annotation>... annotations) {
@@ -138,7 +136,9 @@ public class ContextConfig {
         }
         Optional<Annotation> scope() {
             List<Annotation> scopes = group.getOrDefault(Scope.class, from(type, Scope.class));
-            if (scopes.size() > 1) throw illegalAnnotation(type, scopes);
+            if (scopes.size() > 1) {
+                throw illegalAnnotation(type, scopes);
+            }
             return scopes.stream().findFirst();
         }
         List<Annotation> qualifiers() {
@@ -154,8 +154,9 @@ public class ContextConfig {
             this.config = config;
         }
         void bind() {
-            for (Declaration declaration : declarations())
+            for (Declaration declaration : declarations()) {
                 declaration.value().ifPresentOrElse(declaration::bindInstance, declaration::bindComponent);
+            }
         }
         private List<Declaration> declarations() {
             return stream(config.getClass().getDeclaredFields()).filter(f -> !f.isSynthetic()).map(Declaration::new).toList();
@@ -209,7 +210,7 @@ class ContextConfigException extends RuntimeException {
     static ContextConfigException unknownScope(Class<? extends Annotation> annotationType) {
         return new ContextConfigException(MessageFormat.format("Unknown scope: {0}", annotationType));
     }
-    static ContextConfigException duplicated(Component component) {
+    static ContextConfigException duplicated(Object component) {
         return new ContextConfigException(MessageFormat.format("Duplicated: {0}", component));
     }
     ContextConfigException(String message) {

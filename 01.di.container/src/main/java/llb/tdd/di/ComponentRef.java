@@ -21,6 +21,9 @@ public class ComponentRef<ComponentType> {
     public static <ComponentType> ComponentRef<ComponentType> of(Class<ComponentType> component, Annotation qualifier) {
         return new ComponentRef<>(component, qualifier);
     }
+    public static ComponentRef of(Type type) {
+        return new ComponentRef(type, null);
+    }
     public static ComponentRef<?> of(Type type, Annotation qualifier) {
         return new ComponentRef<>(type, qualifier);
     }
