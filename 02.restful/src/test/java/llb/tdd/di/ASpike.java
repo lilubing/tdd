@@ -36,6 +36,17 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+  * https://github.com/wyyl1/geektime-tdd-framework
+ * https://github.com/Antinomy/geektime-tdd-practice
+ * https://github.com/lenwind/TDD-Learn
+ * https://github.com/wyyl1/geektime-tdd-framework
+ * https://github.com/Antinomy/geektime-tdd-practice
+  * @Author LiLuBing
+  * @Date 2022/11/8 下午8:29
+  * @Param  * @param null
+  * @return {@link null}
+  **/
 public class ASpike {
 	Server server;
 
@@ -114,13 +125,12 @@ public class ASpike {
 
 			List<Class<?>> writerClasses = this.application.getClasses().stream().filter(MessageBodyWriter.class::isAssignableFrom).toList();
 
-			for (Class<?> writerClass : writerClasses) {
-				// config.component(writerClass, writerClass);
+			for (Class writerClass : writerClasses) {
+				config.component(writerClass, writerClass);
 			}
 
 			Context context = config.getContext();
-
-			// writers = (List<MessageBodyWriter>) writerClasses.stream().map(c - context.get(ComponentRef.of(c)).get()).toList();
+			writers = (List<MessageBodyWriter>) writerClasses.stream().map(c -> context.get(ComponentRef.of(c)).get()).toList();
 
 			writers = (List<MessageBodyWriter>) writerClasses.stream()
 					.map(c -> {
