@@ -15,14 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 /**
-  * https://github.com/wyyl1/geektime-tdd-framework/blob/master/restful/src/test/java/geektime/tdd/rest/ASpike.java
- * https://github.com/Antinomy/geektime-tdd-practice/tree/master/tdd-rest/src/test/java/geektime/tdd/rest
- * https://github.com/lenwind/TDD-Learn/blob/main/web-service/src/test/java/pers/lenwind/rest/ASpike.java
- * https://github.com/wyyl1/geektime-tdd-framework/blob/master/restful/src/test/java/geektime/tdd/rest/ASpike.java
- *
- * 38-5
- *
- *
+  * https://github.com/Antinomy/geektime-tdd-practice/tree/master/tdd-rest/src/test/java/geektime/tdd/rest
   * @Author LiLuBing
   * @Date 2022/11/8 下午8:29
   * @Param  * @param null
