@@ -134,8 +134,53 @@ public class ResourceServletTest extends ServletTest {
 		assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
 	}
 
+	@Test
+	public void should_not_call_message_body_writer_if_entity_is_null() throws Exception {
+		response.entity(null, new Annotation[0]).returnFrom(router);
+
+		HttpResponse<String> httpResponse = get("/test");
+		assertEquals(Response.Status.OK.getStatusCode(), httpResponse.statusCode());
+		assertEquals("", httpResponse.body());
+	}
+
 	// TODO: 500 if MessageBodyWriter not found
-	// TODO entity is null, ignore MessageBodyWriter
+	// TODO: 500 if header delegate∂
+	// TODO: 500 if exception mapper
+
+	// TODO exception mapper
+	@Test
+	public void should_use_response_from_web_application_exception_thrown_by_exception_mapper() throws Exception {
+		when(router.dispatch(any(), eq(resourceContext))).thenThrow(RuntimeException.class);
+		when(providers.getExceptionMapper(eq(RuntimeException.class)))
+				.thenReturn(exception -> {
+					throw new WebApplicationException(response.status(Response.Status.FORBIDDEN).build());
+				});
+		HttpResponse<String> httpResponse = get("/test");
+
+		assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+	}
+
+	@Test
+	public void should_map_exception_thrown_by_exception_mapper() throws Exception {
+		when(router.dispatch(any(), eq(resourceContext))).thenThrow(RuntimeException.class);
+		when(providers.getExceptionMapper(eq(RuntimeException.class)))
+				.thenReturn(exception -> {
+					throw new IllegalArgumentException();
+				});
+
+		when(providers.getExceptionMapper(eq(IllegalArgumentException.class)))
+				.thenReturn(exception -> response.status(Response.Status.FORBIDDEN).build());
+
+		HttpResponse<String> httpResponse = get("/test");
+
+		assertEquals(Response.Status.FORBIDDEN.getStatusCode(), httpResponse.statusCode());
+	}
+	// TODO providers gets exception mapper
+	// TODO runtime delegate
+	// TODO header delegate
+	// TODO providers gets message body writer
+	// TODO message body writer write
+
 	class OutBoundResponseBuilder {
 		Response.Status status = Response.Status.OK;
 		MultivaluedMap<String, Object> headers = new MultivaluedHashMap<>();
