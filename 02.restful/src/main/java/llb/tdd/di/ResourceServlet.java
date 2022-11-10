@@ -31,7 +31,7 @@ public class ResourceServlet extends HttpServlet {
 
 	public ResourceServlet(Runtime runtime) {
 		this.runtime = runtime;
-		providers = runtime.getProviders();
+		this.providers = runtime.getProviders();
 	}
 
 	@Override
@@ -50,26 +50,31 @@ public class ResourceServlet extends HttpServlet {
 		}
 	}
 
-	private OutboundResponse from(Throwable throwable) {
-		ExceptionMapper mapper = providers.getExceptionMapper(throwable.getClass());
-		return (OutboundResponse) mapper.toResponse(throwable);
-	}
-
 	private void respond(HttpServletResponse resp, OutboundResponse response) throws IOException {
 		resp.setStatus(response.getStatus());
-		MultivaluedMap<String, Object> headers = response.getHeaders();
+		headers(resp, response.getHeaders());
+		body(resp, response, response.getGenericEntity());
+	}
+
+	private void headers(HttpServletResponse resp, MultivaluedMap<String, Object> headers) {
 		for (String name : headers.keySet()) {
 			for (Object value : headers.get(name)) {
 				RuntimeDelegate.HeaderDelegate headerDelegate = RuntimeDelegate.getInstance().createHeaderDelegate(value.getClass());
 				resp.addHeader(name, headerDelegate.toString(value));
 			}
 		}
+	}
 
-		GenericEntity entity = response.getGenericEntity();
-		if(null != entity) {
+	private void body(HttpServletResponse resp, OutboundResponse response, GenericEntity entity) throws IOException {
+		if (entity != null) {
 			MessageBodyWriter writer = providers.getMessageBodyWriter(entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType());
 			writer.writeTo(entity.getEntity(), entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType(),
 					response.getHeaders(), resp.getOutputStream());
 		}
+	}
+
+	private OutboundResponse from(Throwable throwable) {
+		ExceptionMapper mapper = providers.getExceptionMapper(throwable.getClass());
+		return (OutboundResponse) mapper.toResponse(throwable);
 	}
 }
