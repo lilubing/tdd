@@ -13,9 +13,9 @@ import java.util.regex.MatchResult;
  * @ProjectName tdd
  * @Version V1.0
  */
-interface UriTemplate extends Comparable<MatchResult> {
+interface UriTemplate {
     //@Path("{id}") /1/orders
-    interface MatchResult {
+    interface MatchResult extends Comparable<MatchResult> {
         String getMatched(); // 1
 
         String getRemaining(); // orders
