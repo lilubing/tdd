@@ -1,7 +1,6 @@
 package llb.tdd.di;
 
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,15 +28,45 @@ interface UriTemplate {
 
 class UriTemplateString implements UriTemplate{
 
-    private static Pattern variable = Pattern.compile("\\{\\w[\\w\\.-]*\\}");
+    private static final String LeftBracket ="\\{";
+    private static final String RightBracket ="}";
+    private static final String NonBracket ="[^\\{}]+";
+    private static final String VariableName ="\\w[\\w\\.-]*";
+    public static final String Remaining = "(/.*)?";
+    public static final String defaultVariablePattern = "([^/]+?)";
+    private static Pattern variable = Pattern.compile(
+            LeftBracket
+                    + group(VariableName)
+                    + group(":"+group(NonBracket))+"?"
+                    + RightBracket
+    );
     private final Pattern pattern;
+    private final List<String> variables = new ArrayList<>();
+    private int variableGroupStartFrom;
+    private int  variableNameGroup = 1;
+    private int  variablePatternGroup = 3;
 
-    public UriTemplateString(String template) {
-        pattern = Pattern.compile("(" + variable(template) + ")" + "(/.*)?");
+    private static String group(String pattern){
+        return "("+pattern+")";
     }
 
-    private static String variable(String template) {
-        return variable.matcher(template).replaceAll("([^/]+?)");
+    public UriTemplateString(String template) {
+        pattern = Pattern.compile(group(variable(template)) + Remaining);
+        variableGroupStartFrom = 2;
+    }
+
+    private String variable(String template) {
+        return variable.matcher(template).replaceAll(result -> {
+            String variableName = result.group(variableNameGroup);
+            String pattern = result.group(variablePatternGroup);
+
+            if(variables.contains(variableName)) {
+                throw new IllegalArgumentException("duplicate variable" + variableName);
+            }
+
+            variables.add(variableName);
+            return pattern == null ? defaultVariablePattern : group(pattern);
+        });
     }
 
     @Override
@@ -47,6 +76,12 @@ class UriTemplateString implements UriTemplate{
             return Optional.empty();
         }
         int count = matcher.groupCount();
+        Map<String, String> parameters = new HashMap<>();
+        for (int i = 0; i < variables.size(); i++) {
+            parameters.put(variables.get(i), matcher.group(variableGroupStartFrom + i));
+        }
+
+
         return Optional.of(new MatchResult() {
 
             @Override
@@ -66,7 +101,7 @@ class UriTemplateString implements UriTemplate{
 
             @Override
             public Map<String, String> getMatchedPathParameters() {
-                return null;
+                return parameters;
             }
         });
     }
