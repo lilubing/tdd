@@ -50,26 +50,28 @@ class PathTemplate implements UriTemplate{
     }
 
     public PathTemplate(String template) {
-        pattern = Pattern.compile(group(variable(template)) + Remaining);
+        pattern = Pattern.compile(group(template(template)) + Remaining);
         variableGroupStartFrom = 2;
     }
 
-    private String variable(String template) {
-        return variable.matcher(template).replaceAll(result -> {
-            String variableName = result.group(variableNameGroup);
-            String pattern = result.group(variablePatternGroup);
+    private String template(String template) {
+        return variable.matcher(template).replaceAll(result -> replace(result));
+    }
 
-            if(variables.contains(variableName)) {
-                throw new IllegalArgumentException("duplicate variable" + variableName);
-            }
+    private String replace(java.util.regex.MatchResult result) {
+        String variableName = result.group(variableNameGroup);
+        String pattern = result.group(variablePatternGroup);
 
-            variables.add(variableName);
-            if(pattern != null) {
-                specificPatterCount++;
-                return group(pattern);
-            }
-            return defaultVariablePattern;
-        });
+        if(variables.contains(variableName)) {
+            throw new IllegalArgumentException("duplicate variable" + variableName);
+        }
+
+        variables.add(variableName);
+        if(pattern != null) {
+            specificPatterCount++;
+            return group(pattern);
+        }
+        return defaultVariablePattern;
     }
 
     @Override
@@ -86,18 +88,23 @@ class PathTemplate implements UriTemplate{
         private int matchLiteralCount;
         private Matcher matcher;
         private int count;
-        private Map<String, String> parameters = new HashMap<>();
+        private Map<String, String> parameters;
 
         public PathMatchResult(Matcher matcher) {
             this.matcher = matcher;
             this.count = matcher.groupCount();
             this.matchLiteralCount = matcher.group(1).length();
             this.specificParameterCount = specificPatterCount;
+            this.parameters = extracted(matcher);
+        }
 
+        private Map<String, String> extracted(Matcher matcher) {
+            Map<String, String> tmp = new HashMap<>();
             for (int i = 0; i < variables.size(); i++) {
-                parameters.put(variables.get(i), matcher.group(variableGroupStartFrom + i));
+                tmp.put(variables.get(i), matcher.group(variableGroupStartFrom + i));
                 matchLiteralCount -= matcher.group(variableGroupStartFrom + i).length();
             }
+            return tmp;
         }
 
         @Override
