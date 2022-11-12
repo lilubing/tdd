@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
  * @Version V1.0
  */
 interface UriTemplate {
-    //@Path("{id}") /1/orders
     interface MatchResult extends Comparable<MatchResult> {
         String getMatched(); // 1
 
@@ -26,13 +25,14 @@ interface UriTemplate {
     Optional<MatchResult> match(String path);
 }
 
-class UriTemplateString implements UriTemplate{
-
+class PathTemplate implements UriTemplate{
     private static final String LeftBracket ="\\{";
     private static final String RightBracket ="}";
     private static final String NonBracket ="[^\\{}]+";
     private static final String VariableName ="\\w[\\w\\.-]*";
     public static final String Remaining = "(/.*)?";
+    private int  variableNameGroup = 1;
+    private int  variablePatternGroup = 3;
     public static final String defaultVariablePattern = "([^/]+?)";
     private static Pattern variable = Pattern.compile(
             LeftBracket
@@ -42,15 +42,14 @@ class UriTemplateString implements UriTemplate{
     );
     private final Pattern pattern;
     private final List<String> variables = new ArrayList<>();
+    private int specificPatterCount = 0;
     private int variableGroupStartFrom;
-    private int  variableNameGroup = 1;
-    private int  variablePatternGroup = 3;
 
     private static String group(String pattern){
         return "("+pattern+")";
     }
 
-    public UriTemplateString(String template) {
+    public PathTemplate(String template) {
         pattern = Pattern.compile(group(variable(template)) + Remaining);
         variableGroupStartFrom = 2;
     }
@@ -65,7 +64,11 @@ class UriTemplateString implements UriTemplate{
             }
 
             variables.add(variableName);
-            return pattern == null ? defaultVariablePattern : group(pattern);
+            if(pattern != null) {
+                specificPatterCount++;
+                return group(pattern);
+            }
+            return defaultVariablePattern;
         });
     }
 
@@ -75,34 +78,53 @@ class UriTemplateString implements UriTemplate{
         if(!matcher.matches()) {
             return Optional.empty();
         }
-        int count = matcher.groupCount();
-        Map<String, String> parameters = new HashMap<>();
-        for (int i = 0; i < variables.size(); i++) {
-            parameters.put(variables.get(i), matcher.group(variableGroupStartFrom + i));
+        return Optional.of(new PathMatchResult(matcher));
+    }
+
+    class PathMatchResult implements MatchResult {
+        private final int specificParameterCount;
+        private int matchLiteralCount;
+        private Matcher matcher;
+        private int count;
+        private Map<String, String> parameters = new HashMap<>();
+
+        public PathMatchResult(Matcher matcher) {
+            this.matcher = matcher;
+            this.count = matcher.groupCount();
+            this.matchLiteralCount = matcher.group(1).length();
+            this.specificParameterCount = specificPatterCount;
+
+            for (int i = 0; i < variables.size(); i++) {
+                parameters.put(variables.get(i), matcher.group(variableGroupStartFrom + i));
+                matchLiteralCount -= matcher.group(variableGroupStartFrom + i).length();
+            }
         }
 
+        @Override
+        public int compareTo(MatchResult o) {
+            PathMatchResult result = (PathMatchResult) o;
+            if(matchLiteralCount > result.matchLiteralCount) return -1;
+            if(matchLiteralCount < result.matchLiteralCount) return 1;
+            if(parameters.size() > result.parameters.size()) return -1;
+            if(parameters.size() < result.parameters.size()) return 1;
+            if (specificParameterCount > result.specificParameterCount) return -1;
+            if (specificParameterCount < result.specificParameterCount) return 1;
+            return 0;
+        }
 
-        return Optional.of(new MatchResult() {
+        @Override
+        public String getMatched() {
+            return matcher.group(1);
+        }
 
-            @Override
-            public int compareTo(MatchResult o) {
-                return 0;
-            }
+        @Override
+        public String getRemaining() {
+            return matcher.group(count);
+        }
 
-            @Override
-            public String getMatched() {
-                return matcher.group(1);
-            }
-
-            @Override
-            public String getRemaining() {
-                return matcher.group(count);
-            }
-
-            @Override
-            public Map<String, String> getMatchedPathParameters() {
-                return parameters;
-            }
-        });
+        @Override
+        public Map<String, String> getMatchedPathParameters() {
+            return parameters;
+        }
     }
 }
