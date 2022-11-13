@@ -34,8 +34,8 @@ interface ResourceRouter {
 		GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder);
 	}
 	interface SubResourceLocator extends UriHandler {
+		Resource getSubResource(ResourceContext resourceContext, UriInfoBuilder uriInfoBuilder);
 	}
-
 }
 class DefaultResourceRouter implements ResourceRouter {
 	private Runtime runtime;
@@ -48,18 +48,13 @@ class DefaultResourceRouter implements ResourceRouter {
 	public OutboundResponse dispatch(HttpServletRequest request, ResourceContext resourceContext) {
 		String path = request.getServletPath();
 		UriInfoBuilder uri = runtime.createUriInfoBuilder(request);
-
-        List<RootResource> rootResources = this.rootResources;
-        Optional<ResourceMethod> method = UriHandlers.mapMatched(path, rootResources, (result, resource) ->
-				findResourceMethod(request, uri, result, resource));
-
+		Optional<ResourceMethod> method = UriHandlers.mapMatched(path, rootResources, (result, resource) -> findResourceMethod(request, uri, result, resource));
 		if (method.isEmpty()) return (OutboundResponse) Response.status(Response.Status.NOT_FOUND).build();
 		return (OutboundResponse) method.map(m -> m.call(resourceContext, uri)).map(entity -> Response.ok(entity).build())
 				.orElseGet(() -> Response.noContent().build());
 	}
-
-	private static Optional<ResourceMethod> findResourceMethod(HttpServletRequest request, UriInfoBuilder uri, Optional<UriTemplate.MatchResult> matchResult, RootResource handler) {
-		return handler.match(matchResult.get(), request.getMethod(),
+	private Optional<ResourceMethod> findResourceMethod(HttpServletRequest request, UriInfoBuilder uri, Optional<UriTemplate.MatchResult> matched, RootResource handler) {
+		return handler.match(matched.get(), request.getMethod(),
 				Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), uri);
 	}
 }
@@ -137,7 +132,6 @@ class ResourceMethods {
 		return Optional.ofNullable(resourceMethods.get(method)).flatMap(methods -> UriHandlers.match(path, methods, r -> r.getRemaining() == null));
 	}
 }
-
 class SubResourceLocators {
 	private final List<ResourceRouter.SubResourceLocator> subResourceLocators;
 	public SubResourceLocators(Method[] methods) {
@@ -162,6 +156,18 @@ class SubResourceLocators {
 		@Override
 		public String toString() {
 			return method.getDeclaringClass().getSimpleName() + "." + method.getName();
+		}
+
+		@Override
+		public ResourceRouter.Resource getSubResource(ResourceContext resourceContext, UriInfoBuilder uriInfoBuilder) {
+			Object resource = uriInfoBuilder.getLastMatchedResource();
+			try {
+				Object subResource = method.invoke(resource);
+				uriInfoBuilder.addMatchedResource(subResource);
+				return new SubResource(subResource);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 }

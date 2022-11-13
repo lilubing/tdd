@@ -10,9 +10,13 @@ package llb.tdd.di;
  * @Version V1.0
  */
 public interface UriInfoBuilder {
-    void pushMatchedPath(String path);
+    /*void pushMatchedPath(String path);
 
     void addParameter(String string, String value);
 
-    String getUnmatchedPath();
+    String getUnmatchedPath();*/
+
+    Object getLastMatchedResource();
+
+    void addMatchedResource(Object resource);
 }
