@@ -84,33 +84,30 @@ class DefaultResourceRouter implements ResourceRouter {
 	}
 }
 
-class RootResourceClass implements ResourceRouter.RootResource {
-	private PathTemplate uriTemplate;
-	private Class<?> resourceClass;
+class ResourceMethods {
 	private Map<String, List<ResourceRouter.ResourceMethod>> resourceMethods;
-	public RootResourceClass(Class<?> resourceClass) {
-		this.resourceClass = resourceClass;
-		this.uriTemplate = new PathTemplate(resourceClass.getAnnotation(Path.class).value());
-		this.resourceMethods = Arrays.stream(resourceClass.getMethods()).filter(m -> Arrays.stream(m.getAnnotations())
+	public ResourceMethods(Method[] methods) {
+		this.resourceMethods = getResourceMethods(methods);
+	}
+
+	private static Map<String, List<ResourceRouter.ResourceMethod>> getResourceMethods(Method[] methods) {
+		return Arrays.stream(methods).filter(m -> Arrays.stream(m.getAnnotations())
 						.anyMatch(a -> a.annotationType().isAnnotationPresent(HttpMethod.class)))
 				.map(DefaultResourceMethod::new)
 				.collect(Collectors.groupingBy(ResourceRouter.ResourceMethod::getHttpMethod));
 	}
-	@Override
-	public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String method, String[] mediaTypes, UriInfoBuilder builder) {
-		String remaining = Optional.ofNullable(result.getRemaining()).orElse("");
-		return Optional.ofNullable(resourceMethods.get(method)).flatMap(methods -> methods.stream().map(m -> match(remaining, m)).filter(Result::isMatched).sorted()
-				.findFirst().map(Result::resourceMethod));
+
+	public Optional<ResourceRouter.ResourceMethod> findResourceMethods(String path, String method) {
+		return Optional.ofNullable(resourceMethods.get(method)).flatMap(methods -> methods.stream().map(m -> ResourceMethods.match(path, m)).filter(ResourceMethods.Result::isMatched).sorted()
+				.findFirst().map(ResourceMethods.Result::resourceMethod));
 	}
-	@Override
-	public UriTemplate getUriTemplate() {
-		return uriTemplate;
-	}
-	private Result match(String path, ResourceRouter.ResourceMethod method) {
+
+	private static Result match(String path, ResourceRouter.ResourceMethod method) {
 		return new Result(method.getUriTemplate().match(path), method);
 	}
-	record Result(Optional<UriTemplate.MatchResult> matched,
-				  ResourceRouter.ResourceMethod resourceMethod) implements Comparable<Result> {
+
+	static record Result(Optional<UriTemplate.MatchResult> matched,
+						 ResourceRouter.ResourceMethod resourceMethod) implements Comparable<Result> {
 		public boolean isMatched() {
 			return matched.map(r -> r.getRemaining() == null).orElse(false);
 		}
@@ -119,32 +116,71 @@ class RootResourceClass implements ResourceRouter.RootResource {
 			return matched.flatMap(x -> o.matched.map(x::compareTo)).orElse(0);
 		}
 	}
-	static class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
-		private String httpMethod;
-		private UriTemplate uriTemplate;
-		private Method method;
-		public DefaultResourceMethod(Method method) {
-			this.method = method;
-			this.uriTemplate = new PathTemplate(
-					Optional.ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse(""));
-			this.httpMethod = Arrays.stream(method.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(HttpMethod.class))
-					.findFirst().get().annotationType().getAnnotation(HttpMethod.class).value();
-		}
-		@Override
-		public String getHttpMethod() {
-			return httpMethod;
-		}
-		@Override
-		public UriTemplate getUriTemplate() {
-			return uriTemplate;
-		}
-		@Override
-		public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
-			return null;
-		}
-		@Override
-		public String toString() {
-			return method.getDeclaringClass().getSimpleName() + "." + method.getName();
-		}
+}
+
+class RootResourceClass implements ResourceRouter.RootResource {
+	private PathTemplate uriTemplate;
+	private Class<?> resourceClass;
+	private ResourceMethods resourceMethods;
+
+	public RootResourceClass(Class<?> resourceClass) {
+		this.resourceClass = resourceClass;
+		this.uriTemplate = new PathTemplate(resourceClass.getAnnotation(Path.class).value());
+		this.resourceMethods = new ResourceMethods(resourceClass.getMethods());
+	}
+
+	@Override
+	public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String method, String[] mediaTypes, UriInfoBuilder builder) {
+		String remaining = Optional.ofNullable(result.getRemaining()).orElse("");
+		return resourceMethods.findResourceMethods(remaining, method);
+	}
+
+	@Override
+	public UriTemplate getUriTemplate() {
+		return uriTemplate;
+	}
+}
+
+class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
+	private String httpMethod;
+	private UriTemplate uriTemplate;
+	private Method method;
+	public DefaultResourceMethod(Method method) {
+		this.method = method;
+		this.uriTemplate = new PathTemplate(Optional.ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse(""));
+		this.httpMethod = Arrays.stream(method.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(HttpMethod.class))
+				.findFirst().get().annotationType().getAnnotation(HttpMethod.class).value();
+	}
+	@Override
+	public String getHttpMethod() {
+		return httpMethod;
+	}
+	@Override
+	public UriTemplate getUriTemplate() {
+		return uriTemplate;
+	}
+	@Override
+	public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
+		return null;
+	}
+	@Override
+	public String toString() {
+		return method.getDeclaringClass().getSimpleName() + "." + method.getName();
+	}
+}
+
+class SubResource implements ResourceRouter.Resource {
+	private Object subResource;
+	private ResourceMethods resourceMethods;
+
+	public SubResource(Object subResource) {
+		this.subResource = subResource;
+		this.resourceMethods = new ResourceMethods(subResource.getClass().getMethods());
+	}
+
+	@Override
+	public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String method, String[] mediaType, UriInfoBuilder builder) {
+		String remaining = Optional.ofNullable(result.getRemaining()).orElse("");
+		return resourceMethods.findResourceMethods(remaining, method);
 	}
 }

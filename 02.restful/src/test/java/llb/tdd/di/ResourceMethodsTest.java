@@ -2,41 +2,25 @@ package llb.tdd.di;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.Mockito;
-
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
 
 /**
  * @author LiLuBing
  * @PackageName: llb.tdd.di
  * @Description:
- * @ClassName: RootResourceTest
- * @date 2022-11-13 上午8:12
+ * @ClassName: ResourceMethodsTest
+ * @date 2022-11-13 下午3:39
  * @ProjectName tdd
  * @Version V1.0
  */
-public class RootResourceTest {
-    @Test
-    public void should_get_uri_template_from_path_annotation() {
-        ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
-        UriTemplate template = resource.getUriTemplate();
-
-        assertTrue(template.match("/messages/hello").isPresent());
-    }
-
-    //TODO find resource method, matches the http request and http method
+public class ResourceMethodsTest {
     @ParameterizedTest
     @CsvSource(textBlock = """
             GET,    /messages/hello,        Messages.hello,         GET and URI match
-            GET,    /messages/ah,           Messages.ah,            GET and URI match
             POST,   /messages/hello,        Messages.postHello,     POST and URI match
             PUT,    /messages/hello,        Messages.putHello,      PUT and URI match
             DELETE, /messages/hello,        Messages.deleteHello,   DELETE and URI match
@@ -47,39 +31,28 @@ public class RootResourceTest {
             GET,    /messages,              Messages.get,           GET with resource method without Path
             """)
     public void should_match_resource_method_in_root_resource(String httpMethod, String path, String resourceMethod) {
-        ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
-        UriTemplate.MatchResult result = resource.getUriTemplate().match(path).get();
+        ResourceMethods resourceMethods = new ResourceMethods(Messages.class.getMethods());
+        UriTemplate.MatchResult result = new PathTemplate("/messages").match(path).get();
 
-        ResourceRouter.ResourceMethod method = resource.match(result, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).get();
+        String remaining = result.getRemaining() == null ? "" : result.getRemaining();
+
+        ResourceRouter.ResourceMethod method = resourceMethods.findResourceMethods(remaining, httpMethod).get();
 
         assertEquals(resourceMethod, method.toString());
     }
 
-    @Test
-    public void should_match_resource_method_in_sub_resource() {
-        ResourceRouter.Resource resource = new SubResource(new Message());
-        UriTemplate.MatchResult result = Mockito.mock(UriTemplate.MatchResult.class);
-        when(result.getRemaining()).thenReturn("/content");
-
-        assertTrue(resource.match(result,"GET", new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).isPresent());
-    }
-    //TODO if sub resource locator matches uri, using it to tdo follow up matching
-
-    //TODO if no method / sub resource locator matches, return 404
     @ParameterizedTest(name = "{2}")
     @CsvSource(textBlock = """
             GET,    /missing-messages/hello,        URI not match
             POST,   /missing-messages/,             http match not match
             """)
     public void should_return_empty_if_not_match(String httpMethod, String uri, String context) {
-        ResourceRouter.RootResource resource = new RootResourceClass(MissingMessages.class);
-        UriTemplate.MatchResult result = resource.getUriTemplate().match(uri).get();
+        ResourceMethods resourceMethods = new ResourceMethods(MissingMessages.class.getMethods());
+        UriTemplate.MatchResult result = new PathTemplate("/missing-messages").match(uri).get();
+        String remaining = result.getRemaining() == null ? "" : result.getRemaining();
 
-        assertTrue(resource.match(result, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).isEmpty());
+        assertTrue(resourceMethods.findResourceMethods(remaining, httpMethod).isEmpty());
     }
-
-    //TODO if resource class does not have a path annotation, throw illegal argument
-    //TODO Head and Options special case
 
     @Path("/missing-messages")
     static class MissingMessages {
@@ -96,13 +69,6 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String get() {
             return "message";
-        }
-
-        @GET
-        @Path("/ah")
-        @Produces(MediaType.TEXT_PLAIN)
-        public String ah() {
-            return "ah";
         }
 
         @GET
@@ -162,20 +128,6 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String topics1234() {
             return "topics1234";
-        }
-
-        @Path("/{id}")
-        public Message getById() {
-            return new Message();
-        }
-    }
-
-    static class Message {
-        @GET
-        @Path("/content")
-        @Produces(MediaType.TEXT_PLAIN)
-        public String content() {
-            return "content";
         }
     }
 }
