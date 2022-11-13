@@ -1,6 +1,7 @@
 package llb.tdd.di;
 
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -34,11 +35,13 @@ public class RootResourceTest {
 
     //TODO find resource method, matches the http request and http method
     @ParameterizedTest
-    @CsvSource({"GET,/messages/hello,Messages.hello", "GET,/messages/ah,Messages.ah"})
+    @CsvSource({"GET,/messages/hello,Messages.hello", "GET,/messages/ah,Messages.ah", "POST,/messages/hello,Messages.postHello",
+            "GET,/messages/topics/1234,Messages.topics1234"})
     public void should_match_resource_method(String httpMethod, String path, String resourceMethod) {
         ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
+        UriTemplate.MatchResult result = resource.getUriTemplate().match(path).get();
 
-        ResourceRouter.ResourceMethod method = resource.match(path, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).get();
+        ResourceRouter.ResourceMethod method = resource.match(result, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).get();
 
         assertEquals(resourceMethod, method.toString());
     }
@@ -61,6 +64,27 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String hello() {
             return "hello";
+        }
+
+        @POST
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String postHello() {
+            return "hello";
+        }
+
+        @GET
+        @Path("/topics/{id}")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String topicsId() {
+            return "topicsId";
+        }
+
+        @GET
+        @Path("/topics/1234")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String topics1234() {
+            return "topics1234";
         }
     }
 }
