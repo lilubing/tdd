@@ -1,9 +1,6 @@
 package llb.tdd.di;
 
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,8 +32,18 @@ public class RootResourceTest {
 
     //TODO find resource method, matches the http request and http method
     @ParameterizedTest
-    @CsvSource({"GET,/messages/hello,Messages.hello", "GET,/messages/ah,Messages.ah", "POST,/messages/hello,Messages.postHello",
-            "GET,/messages/topics/1234,Messages.topics1234"})
+    @CsvSource(textBlock = """
+            GET,    /messages/hello,        Messages.hello,         GET and URI match
+            GET,    /messages/ah,           Messages.ah,            GET and URI match
+            POST,   /messages/hello,        Messages.postHello,     POST and URI match
+            PUT,    /messages/hello,        Messages.putHello,      PUT and URI match
+            DELETE, /messages/hello,        Messages.deleteHello,   DELETE and URI match
+            PATCH,  /messages/hello,        Messages.patchHello,    PATCH and URI match
+            HEAD,   /messages/hello,        Messages.headHello,     HEAD and URI match
+            OPTIONS,/messages/hello,        Messages.optionsHello,  OPTIONS and URI match
+            GET,    /messages/topics/1234,  Messages.topics1234,    GET with multiply choices
+            GET,    /messages,              Messages.get,           GET with resource method without Path
+            """)
     public void should_match_resource_method(String httpMethod, String path, String resourceMethod) {
         ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
         UriTemplate.MatchResult result = resource.getUriTemplate().match(path).get();
@@ -47,11 +54,40 @@ public class RootResourceTest {
     }
 
     //TODO if sub resource locator matches uri, using it to tdo follow up matching
+
     //TODO if no method / sub resource locator matches, return 404
+    @ParameterizedTest(name = "{2}")
+    @CsvSource(textBlock = """
+            GET,    /missing-messages/hello,        URI not match
+            POST,   /missing-messages/,             http match not match
+            """)
+    public void should_return_empty_if_not_match(String httpMethod, String uri, String context) {
+        ResourceRouter.RootResource resource = new RootResourceClass(MissingMessages.class);
+        UriTemplate.MatchResult result = resource.getUriTemplate().match(uri).get();
+
+        assertTrue(resource.match(result, httpMethod, new String[]{MediaType.TEXT_PLAIN}, Mockito.mock(UriInfoBuilder.class)).isEmpty());
+    }
+
     //TODO if resource class does not have a path annotation, throw illegal argument
+    //TODO Head and Options special case
+
+    @Path("/missing-messages")
+    static class MissingMessages {
+        @GET
+        @Produces(MediaType.TEXT_PLAIN)
+        public String get() {
+            return "message";
+        }
+    }
 
     @Path("/messages")
     static class Messages {
+        @GET
+        @Produces(MediaType.TEXT_PLAIN)
+        public String get() {
+            return "message";
+        }
+
         @GET
         @Path("/ah")
         @Produces(MediaType.TEXT_PLAIN)
@@ -70,6 +106,37 @@ public class RootResourceTest {
         @Path("/hello")
         @Produces(MediaType.TEXT_PLAIN)
         public String postHello() {
+            return "hello";
+        }
+
+        @PUT
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String putHello() {
+            return "hello";
+        }
+        @DELETE
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String deleteHello() {
+            return "hello";
+        }
+        @PATCH
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String patchHello() {
+            return "hello";
+        }
+        @HEAD
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String headHello() {
+            return "hello";
+        }
+        @OPTIONS
+        @Path("/hello")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String optionsHello() {
             return "hello";
         }
 
