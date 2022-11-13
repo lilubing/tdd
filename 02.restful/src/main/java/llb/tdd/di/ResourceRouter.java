@@ -1,11 +1,15 @@
 package llb.tdd.di;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.HttpMethod;
+import jakarta.ws.rs.Path;
 import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.GenericEntity;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +35,8 @@ interface ResourceRouter {
 	}
 
 	interface ResourceMethod {
+		PathTemplate getUriTemplate();
+
 		GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder);
 	}
 }
@@ -74,6 +80,62 @@ class DefaultResourceRouter implements ResourceRouter {
 		private Optional<ResourceMethod> findResourceMethod(HttpServletRequest request, UriInfoBuilder uri) {
 			return matched.flatMap(result -> resource.match(matched.get().getRemaining(),
 					request.getMethod(), Collections.list(request.getHeaders(HttpHeaders.ACCEPT)).toArray(String[]::new), uri));
+		}
+	}
+}
+
+class RootResourceClass implements ResourceRouter.RootResource{
+
+	private PathTemplate uriTemplate;
+	private Class<?> resourceClass;
+	private List<ResourceRouter.ResourceMethod> resourceMethod;
+
+	public RootResourceClass(Class<?> resourceClass) {
+		this.resourceClass = resourceClass;
+		this.uriTemplate = new PathTemplate(resourceClass.getAnnotation(Path.class).value());
+
+		this.resourceMethod = Arrays.stream(resourceClass.getMethods()).filter(m -> Arrays.stream(m.getAnnotations())
+				.anyMatch(a -> a.annotationType().isAnnotationPresent(HttpMethod.class)))
+				.map(m -> (ResourceRouter.ResourceMethod) new DefaultResourceMethod(m)).toList();
+
+	}
+
+	@Override
+	public Optional<ResourceRouter.ResourceMethod> match(String path, String method, String[] mediaType, UriInfoBuilder builder) {
+		UriTemplate.MatchResult result = uriTemplate.match(path).get();
+		String remaining = result.getRemaining();
+		return resourceMethod.stream().filter(m -> m.getUriTemplate().match(remaining).map(r -> r.getRemaining() == null)
+				.orElse(false)).findFirst();
+	}
+
+	@Override
+	public UriTemplate getUriTemplate() {
+		return uriTemplate;
+	}
+
+	static class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
+
+		private PathTemplate uriTemplate;
+		private Method method;
+
+		public DefaultResourceMethod(Method method) {
+			this.method = method;
+			this.uriTemplate = new PathTemplate(method.getAnnotation(Path.class).value());
+		}
+
+		@Override
+		public PathTemplate getUriTemplate() {
+			return uriTemplate;
+		}
+
+		@Override
+		public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
+			return null;
+		}
+
+		@Override
+		public String toString() {
+			return method.getDeclaringClass().getSimpleName() + "." + method.getName();
 		}
 	}
 }

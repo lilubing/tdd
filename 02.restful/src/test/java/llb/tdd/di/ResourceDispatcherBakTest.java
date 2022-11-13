@@ -293,6 +293,11 @@ public class ResourceDispatcherBakTest {
 		}
 
 		@Override
+		public PathTemplate getUriTemplate() {
+			return null;
+		}
+
+		@Override
 		public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
 			Object resource = resourceContext.getResource(resourceClass);
 			try {
@@ -312,6 +317,11 @@ public class ResourceDispatcherBakTest {
 			this.resourceClass = resourceClass;
 			this.method = method;
 			this.medaType = medaType;
+		}
+
+		@Override
+		public PathTemplate getUriTemplate() {
+			return null;
 		}
 
 		@Override
