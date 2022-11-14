@@ -3,7 +3,6 @@ package llb.tdd.di;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.MediaType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -27,10 +26,9 @@ public class SubResourceLocatorsTest {
     @ParameterizedTest(name = "{2}")
     @CsvSource(textBlock = """
             /hello,             Messages.hello,         fully matched with URI
-            /hello/content,     Messages.hello,         matched with URI
+            /hello/content,     Messages.id,            matched with URI
             /topics/1234,       Messages.message1234,   multiple matched choices
             """)
-    @Disabled
     public void should_match_path_with_uri(String path, String resourceMethod, String context) {
         SubResourceLocators locators = new SubResourceLocators(Messages.class.getMethods());
 
@@ -67,7 +65,7 @@ public class SubResourceLocatorsTest {
         UriTemplate.MatchResult result = Mockito.mock(UriTemplate.MatchResult.class);
         when(result.getRemaining()).thenReturn(null);
 
-        ResourceRouter.ResourceMethod method = subResource.match(result, "GET", new String[]{MediaType.TEXT_PLAIN}, infoBuilder).get();
+        ResourceRouter.ResourceMethod method = subResource.match(result, "GET", new String[]{MediaType.TEXT_PLAIN}, null, infoBuilder).get();
         assertEquals("Message.content", method.toString());
         assertEquals("hello", ((Message) infoBuilder.getLastMatchedResource()).message);
 
