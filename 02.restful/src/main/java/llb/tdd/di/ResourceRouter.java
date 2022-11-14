@@ -64,7 +64,6 @@ class RootResourceClass implements ResourceRouter.RootResource {
 	private Class<?> resourceClass;
 	private ResourceMethods resourceMethods;
 	private SubResourceLocators subResourceLocators;
-
 	public RootResourceClass(Class<?> resourceClass) {
 		this.resourceClass = resourceClass;
 		this.uriTemplate = new PathTemplate(resourceClass.getAnnotation(Path.class).value());
@@ -86,14 +85,16 @@ class RootResourceClass implements ResourceRouter.RootResource {
 class SubResource implements ResourceRouter.Resource {
 	private Object subResource;
 	private ResourceMethods resourceMethods;
+	private SubResourceLocators subResourceLocators;
 	public SubResource(Object subResource) {
 		this.subResource = subResource;
 		this.resourceMethods = new ResourceMethods(subResource.getClass().getMethods());
+		this.subResourceLocators = new SubResourceLocators(subResource.getClass().getMethods());
 	}
 	@Override
 	public Optional<ResourceRouter.ResourceMethod> match(UriTemplate.MatchResult result, String method, String[] mediaTypes, ResourceContext resourceContext, UriInfoBuilder builder) {
 		String remaining = Optional.ofNullable(result.getRemaining()).orElse("");
-		return resourceMethods.findResourceMethods(remaining, method);
+		return resourceMethods.findResourceMethods(remaining, method).or(() -> subResourceLocators.findSubResourceMethods(remaining, method, mediaTypes, resourceContext, builder));
 	}
 }
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
@@ -148,11 +149,9 @@ class SubResourceLocators {
 	public Optional<ResourceRouter.SubResourceLocator> findSubResource(String path) {
 		return UriHandlers.match(path, subResourceLocators);
 	}
-
 	public Optional<ResourceRouter.ResourceMethod> findSubResourceMethods(String path, String method, String[] mediaTypes, ResourceContext resourceContext, UriInfoBuilder builder) {
 		return UriHandlers.mapMatched(path, subResourceLocators, (result, locator) -> locator.getSubResource(resourceContext, builder).match(result.get(), method, mediaTypes, resourceContext, builder));
 	}
-
 	static class DefaultSubResourceLocator implements ResourceRouter.SubResourceLocator {
 		private PathTemplate uriTemplate;
 		private Method method;

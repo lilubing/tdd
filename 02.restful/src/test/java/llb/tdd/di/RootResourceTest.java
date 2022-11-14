@@ -47,8 +47,9 @@ public class RootResourceTest {
     @CsvSource(textBlock = """
             GET,    /messages,              Messages.get,       Map to resource methods
             GET,    /messages/1/content,    Message.content,    Map to sub-resource method
+            GET,    /messages/1/body,       MessageBody.get,    Map to sub-sub-resource method
             """)
-    public void should_match_resource_method_in_root_resource(String httpMethod, String path, String resourceMethod) {
+    public void should_match_resource_method_in_root_resource(String httpMethod, String path, String resourceMethod, String context) {
         UriInfoBuilder builder = new StubUriInfoBuilder();
         ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
         UriTemplate.MatchResult result = resource.getUriTemplate().match(path).get();
@@ -65,7 +66,7 @@ public class RootResourceTest {
     @CsvSource(textBlock = """
             GET,    /messages/hello,        No matched resource method
             """)
-    public void should_return_empty_if_not_match(String httpMethod, String uri, String context) {
+    public void should_return_empty_if_not_match_in_root_resource(String httpMethod, String uri, String context) {
         ResourceRouter.RootResource resource = new RootResourceClass(Messages.class);
         UriTemplate.MatchResult result = resource.getUriTemplate().match(uri).get();
 
@@ -84,7 +85,7 @@ public class RootResourceTest {
         assertTrue(uriInfoBuilder.getLastMatchedResource() instanceof  Messages);;
     }
 
-        //TODO if resource class does not have a path annotation, throw illegal argument
+    //TODO if resource class does not have a path annotation, throw illegal argument
     //TODO Head and Options special case
 
     @Path("/messages")
@@ -94,6 +95,11 @@ public class RootResourceTest {
         public String get() {
             return "message";
         }
+
+        @Path("/{id:[0-9]+}")
+        public Message getById() {
+            return new Message();
+        }
     }
 
     static class Message {
@@ -102,6 +108,19 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String content() {
             return "content";
+        }
+
+        @Path("/body")
+        public MessageBody body() {
+            return new MessageBody();
+        }
+    }
+
+    static class MessageBody {
+        @GET
+        @Produces(MediaType.TEXT_PLAIN)
+        public String get() {
+            return "body";
         }
     }
 }
