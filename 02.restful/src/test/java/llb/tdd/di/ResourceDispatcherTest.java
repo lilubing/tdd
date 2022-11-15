@@ -8,8 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.lang.annotation.Annotation;
-import java.net.URI;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,10 +50,6 @@ public class ResourceDispatcherTest {
 		builder = mock(UriInfoBuilder.class);
 		when(runtime.createUriInfoBuilder(same(request))).thenReturn(builder);
 	}
-
-	//TODO 根据与Path匹配结果，降序排列RootResource, 选择第-个的RootResource
-	//TODO R1, R2, R1 matched, R2 none R1
-	//TODO R1, R2, R1, R2, matched, R1 result < R2 result R1
 
 	@Test
 	public void should_use_matched_root_resource() {
@@ -190,159 +184,4 @@ public class ResourceDispatcherTest {
 		}
 	}
 
-	private class StubResponseBuilder extends Response.ResponseBuilder {
-		private int status;
-		private Object entity;
-
-		@Override
-		public Response build() {
-			OutboundResponse response = mock(OutboundResponse.class);
-			when(response.getStatus()).thenReturn(status);
-			when(response.getEntity()).thenReturn(entity);
-			when(response.getGenericEntity()).thenReturn((GenericEntity) entity);
-			return response;
-		}
-
-		@Override
-		public Response.ResponseBuilder clone() {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder status(int i) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder status(int i, String s) {
-			this.status = i;
-			return this;
-		}
-
-		@Override
-		public Response.ResponseBuilder entity(Object o) {
-			this.entity = o;
-			return this;
-		}
-
-		@Override
-		public Response.ResponseBuilder entity(Object o, Annotation[] annotations) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder allow(String... strings) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder allow(Set<String> set) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder cacheControl(CacheControl cacheControl) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder encoding(String s) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder header(String s, Object o) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder replaceAll(MultivaluedMap<String, Object> multivaluedMap) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder language(String s) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder language(Locale locale) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder type(MediaType mediaType) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder type(String s) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder variant(Variant variant) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder contentLocation(URI uri) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder cookie(NewCookie... newCookies) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder expires(Date date) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder lastModified(Date date) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder location(URI uri) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder tag(EntityTag entityTag) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder tag(String s) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder variants(Variant... variants) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder variants(List<Variant> list) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder links(Link... links) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder link(URI uri, String s) {
-			return null;
-		}
-
-		@Override
-		public Response.ResponseBuilder link(String s, String s1) {
-			return null;
-		}
-	}
 }
