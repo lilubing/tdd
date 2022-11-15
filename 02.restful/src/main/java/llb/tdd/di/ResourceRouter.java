@@ -95,6 +95,14 @@ class ResourceMethods {
 				.collect(Collectors.groupingBy(ResourceRouter.ResourceMethod::getHttpMethod));
 	}
 	public Optional<ResourceRouter.ResourceMethod> findResourceMethods(String path, String method) {
+		return findMethod(path, method).or(() -> findAlternative(path, method));
+	}
+
+	private Optional<ResourceRouter.ResourceMethod> findAlternative(String path, String method) {
+		return "HEAD".equals(method) ? findMethod(path, "GET") : Optional.empty();
+	}
+
+	private Optional<ResourceRouter.ResourceMethod> findMethod(String path, String method) {
 		return Optional.ofNullable(resourceMethods.get(method)).flatMap(methods -> UriHandlers.match(path, methods, r -> r.getRemaining() == null));
 	}
 }
@@ -144,8 +152,14 @@ class ResourceHandler implements ResourceRouter.Resource {
 	private SubResourceLocators subResourceLocators;
 	private Function<ResourceContext, Object> resource;
 	public ResourceHandler(Class<?> resourceClass) {
-		this(resourceClass, new PathTemplate(resourceClass.getAnnotation(Path.class).value()), rc -> rc.getResource(resourceClass));
+		this(resourceClass, new PathTemplate(getTemplate(resourceClass)), rc -> rc.getResource(resourceClass));
 	}
+
+	private static String getTemplate(Class<?> resourceClass) {
+		if(!resourceClass.isAnnotationPresent(Path.class)) throw new IllegalArgumentException();
+		return resourceClass.getAnnotation(Path.class).value();
+	}
+
 	public ResourceHandler(Object resource, UriTemplate uriTemplate) {
 		this(resource.getClass(), uriTemplate, rc -> resource);
 	}
@@ -162,9 +176,10 @@ class ResourceHandler implements ResourceRouter.Resource {
 
 		builder.addMatchedResource(resource.apply(resourceContext));
 		String remaining = Optional.ofNullable(result.getRemaining()).orElse("");
-		return resourceMethods.findResourceMethods(remaining, httpMethod).or(() ->
-				subResourceLocators.findSubResourceMethods(remaining, httpMethod, mediaTypes, resourceContext, builder));
+		return resourceMethods.findResourceMethods(remaining, httpMethod)
+				.or(() -> subResourceLocators.findSubResourceMethods(remaining, httpMethod, mediaTypes, resourceContext, builder));
 	}
+
 	@Override
 	public UriTemplate getUriTemplate() {
 		return uriTemplate;

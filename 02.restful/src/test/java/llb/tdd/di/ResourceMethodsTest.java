@@ -1,9 +1,17 @@
 package llb.tdd.di;
 
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.container.ResourceContext;
+import jakarta.ws.rs.core.GenericEntity;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.RuntimeDelegate;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mockito;
+
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,6 +37,7 @@ public class ResourceMethodsTest {
             OPTIONS,/messages/hello,        Messages.optionsHello,  OPTIONS and URI match
             GET,    /messages/topics/1234,  Messages.topics1234,    GET with multiply choices
             GET,    /messages,              Messages.get,           GET with resource method without Path
+            HEAD,   /messages/head,         Messages.getHead,       HEAD with GET resource method
             """)
     public void should_match_resource_method_in_root_resource(String httpMethod, String path, String resourceMethod) {
         ResourceMethods resourceMethods = new ResourceMethods(Messages.class.getMethods());
@@ -54,6 +63,23 @@ public class ResourceMethodsTest {
         assertTrue(resourceMethods.findResourceMethods(remaining, httpMethod).isEmpty());
     }
 
+    @Test
+    public void should() {
+        RuntimeDelegate delegate = Mockito.mock(RuntimeDelegate.class);
+        RuntimeDelegate.setInstance(delegate);
+        Mockito.when(delegate.createResponseBuilder()).thenReturn(new StubResponseBuilder());
+        ResourceContext context = Mockito.mock(ResourceContext.class);
+        UriInfoBuilder builder = Mockito.mock(UriInfoBuilder.class);
+
+        ResourceMethods resourceMethods = new ResourceMethods(MissingMessages.class.getMethods());
+        UriTemplate.MatchResult result = new PathTemplate("/messages").match("/messages/head").get();
+        ResourceRouter.ResourceMethod method = resourceMethods.findResourceMethods(result.getRemaining(), "OPTIONS").get();
+
+        GenericEntity<?> entity = method.call(context, builder);
+        Response response = (Response) entity.getEntity();
+//        Set.of()
+    }
+
     @Path("/missing-messages")
     static class MissingMessages {
         @GET
@@ -69,6 +95,13 @@ public class ResourceMethodsTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String get() {
             return "message";
+        }
+
+        @GET
+        @Path("/head")
+        @Produces(MediaType.TEXT_PLAIN)
+        public String getHead() {
+            return "head";
         }
 
         @GET

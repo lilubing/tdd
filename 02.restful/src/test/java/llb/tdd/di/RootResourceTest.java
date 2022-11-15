@@ -9,8 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -87,6 +86,10 @@ public class RootResourceTest {
     }
 
     //TODO if resource class does not have a path annotation, throw illegal argument
+    @Test
+    public void should_throw_illegal_argument_exception_if_root_resource_not_have_path_annotation() {
+        assertThrows(IllegalArgumentException.class, () -> new ResourceHandler(Message.class));
+    }
     //TODO Head and Options special case
 
     @Path("/messages")
@@ -95,6 +98,20 @@ public class RootResourceTest {
         @Produces(MediaType.TEXT_PLAIN)
         public String get() {
             return "message";
+        }
+
+        @Path("/special")
+        @GET
+        public String getSpecial() {
+            return "special";
+        }
+
+        @HEAD
+        public void head() {
+        }
+
+        @OPTIONS
+        public void options() {
         }
 
         @Path("/{id:[0-9]+}")
