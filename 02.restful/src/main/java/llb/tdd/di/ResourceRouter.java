@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.GenericEntity;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Function;
@@ -45,7 +46,8 @@ class DefaultResourceRouter implements ResourceRouter {
 		UriInfoBuilder uri = runtime.createUriInfoBuilder(request);
 		Optional<ResourceMethod> method = UriHandlers.mapMatched(path, rootResources, (result, resource) -> findResourceMethod(request, resourceContext, uri, result, resource));
 		if (method.isEmpty()) return (OutboundResponse) Response.status(Response.Status.NOT_FOUND).build();
-		return (OutboundResponse) method.map(m -> m.call(resourceContext, uri)).map(entity -> Response.ok(entity).build())
+		return (OutboundResponse) method.map(m -> m.call(resourceContext, uri))
+				.map(entity -> (entity.getEntity() instanceof  Response) ? (OutboundResponse) entity.getEntity() : Response.ok(entity).build())
 				.orElseGet(() -> Response.noContent().build());
 	}
 	private Optional<ResourceMethod> findResourceMethod(HttpServletRequest request, ResourceContext resourceContext, UriInfoBuilder uri, Optional<UriTemplate.MatchResult> matched, Resource handler) {
@@ -74,7 +76,12 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 	}
 	@Override
 	public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
-		return null;
+		try {
+			Object result = method.invoke(builder.getLastMatchedResource());
+			return new GenericEntity<>(result, method.getGenericReturnType());
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	@Override
 	public String toString() {
@@ -137,7 +144,7 @@ class HeadResourceMethod implements ResourceRouter.ResourceMethod {
 	}
 	@Override
 	public String getHttpMethod() {
-		return method.getHttpMethod();
+		return HttpMethod.HEAD;
 	}
 	@Override
 	public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {

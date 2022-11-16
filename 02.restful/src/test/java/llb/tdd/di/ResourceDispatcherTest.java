@@ -56,7 +56,7 @@ public class ResourceDispatcherTest {
 		GenericEntity entity = new GenericEntity("matched", String.class);
 
 		ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
-				rootResource(matched("/users/1", matched("/1")), returns(entity)),
+				rootResource(result("/users/1", result("/1")), returns(entity)),
 				rootResource(unmatched("/users/1"))));
 
 		OutboundResponse response = router.dispatch(request, context);
@@ -66,12 +66,27 @@ public class ResourceDispatcherTest {
 	}
 
 	@Test
+	public void should_use_response_object_from_resource_method() {
+		Response returnResponse = Mockito.mock(OutboundResponse.class);
+		when(returnResponse.getStatus()).thenReturn(304);
+		GenericEntity entity = new GenericEntity(returnResponse, Response.class);
+
+		ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
+				rootResource(result("/users/1", result("/1")), returns(entity)),
+				rootResource(unmatched("/users/1"))));
+
+		OutboundResponse response = router.dispatch(request, context);
+
+		assertEquals(304, response.getStatus());
+	}
+
+		@Test
 	public void should_sort_matched_root_resource_descending_order() {
 		GenericEntity entity1 = new GenericEntity("1", String.class);
 		GenericEntity entity2 = new GenericEntity("2", String.class);
 		ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
-				rootResource(matched("/users/1", matched("/1", 2)), returns(entity2)),
-				rootResource(matched("/users/1", matched("/1", 1)), returns(entity1))));
+				rootResource(result("/users/1", result("/1", 2)), returns(entity2)),
+				rootResource(result("/users/1", result("/1", 1)), returns(entity1))));
 
 		OutboundResponse response = router.dispatch(request, context);
 
@@ -92,7 +107,7 @@ public class ResourceDispatcherTest {
 	@Test
 	public void should_return_404_if_no_resource_method_found() {
 		ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
-				rootResource(matched("/users/1", matched("/1", 2)))));
+				rootResource(result("/users/1", result("/1", 2)))));
 
 		OutboundResponse response = router.dispatch(request, context);
 
@@ -103,7 +118,7 @@ public class ResourceDispatcherTest {
 	@Test
 	public void should_return_204_if_method_return_null() {
 		ResourceRouter router = new DefaultResourceRouter(runtime, List.of(
-				rootResource(matched("/users/1", matched("/1", 2)), returns(null))));
+				rootResource(result("/users/1", result("/1", 2)), returns(null))));
 
 		OutboundResponse response = router.dispatch(request, context);
 
@@ -137,7 +152,7 @@ public class ResourceDispatcherTest {
 		return method;
 	}
 
-	private StubUriTemplate matched(String path, UriTemplate.MatchResult result) {
+	private StubUriTemplate result(String path, UriTemplate.MatchResult result) {
 		UriTemplate matchedUriTemplate = Mockito.mock(UriTemplate.class);
 		when(matchedUriTemplate.match(eq(path))).thenReturn(Optional.of(result));
 		return new StubUriTemplate(matchedUriTemplate, result);
@@ -145,11 +160,11 @@ public class ResourceDispatcherTest {
 
 	record StubUriTemplate(UriTemplate uriTemplate, UriTemplate.MatchResult result) {}
 
-	private UriTemplate.MatchResult matched(String path) {
+	private UriTemplate.MatchResult result(String path) {
 		return new FakeMatchResult(path, 0);
 	}
 
-	private UriTemplate.MatchResult matched(String path, int order) {
+	private UriTemplate.MatchResult result(String path, int order) {
 		return new FakeMatchResult(path, order);
 	}
 
