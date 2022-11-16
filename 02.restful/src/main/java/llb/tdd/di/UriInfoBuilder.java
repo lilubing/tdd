@@ -1,5 +1,7 @@
 package llb.tdd.di;
 
+import jakarta.ws.rs.core.UriInfo;
+
 /**
  * @author LiLuBing
  * @PackageName: llb.tdd.di
@@ -19,4 +21,6 @@ public interface UriInfoBuilder {
     Object getLastMatchedResource();
 
     void addMatchedResource(Object resource);
+
+    UriInfo createUriInfo();
 }
