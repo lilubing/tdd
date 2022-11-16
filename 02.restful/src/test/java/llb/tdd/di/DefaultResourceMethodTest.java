@@ -5,7 +5,6 @@ import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.GenericEntity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.UriInfo;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -16,32 +15,30 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.eq;
 
-/**
- * @author LiLuBing
- * @PackageName: llb.tdd.di
- * @Description:
- * @ClassName: DefaultResourceMethodTest
- * @date 2022-11-16 8:16:24
- * @ProjectName tdd
- * @Version V1.0
- */
 public class DefaultResourceMethodTest {
 	CallableResourceMethods resource;
+
 	ResourceContext context;
+
 	UriInfoBuilder builder;
+
 	UriInfo uriInfo;
+
 	MultivaluedHashMap<String, String> parameters;
 
 	@BeforeEach
 	public void before() {
+
 		resource = Mockito.mock(CallableResourceMethods.class);
 		context = Mockito.mock(ResourceContext.class);
 		builder = Mockito.mock(UriInfoBuilder.class);
 		uriInfo = Mockito.mock(UriInfo.class);
 		parameters = new MultivaluedHashMap<>();
+
 		Mockito.when(builder.getLastMatchedResource()).thenReturn(resource);
 		Mockito.when(builder.createUriInfo()).thenReturn(uriInfo);
 		Mockito.when(uriInfo.getPathParameters()).thenReturn(parameters);
+		Mockito.when(uriInfo.getQueryParameters()).thenReturn(parameters);
 	}
 
 	@Test
@@ -96,9 +93,37 @@ public class DefaultResourceMethodTest {
 	public void should_inject_string_to_query_param() throws NoSuchMethodException {
 		DefaultResourceMethod resourceMethod = getResourceMethod("getQueryParam", String.class);
 		parameters.put("query", List.of("query"));
-		resourceMethod.call(context, builder);
+		resourceMethod.call(context,builder);
 		Mockito.verify(resource).getQueryParam(eq("query"));
 	}
+
+	@Test
+	public void should_inject_int_to_query_param() throws NoSuchMethodException {
+		DefaultResourceMethod resourceMethod = getResourceMethod("getQueryParam", int.class);
+		parameters.put("query", List.of("1"));
+		resourceMethod.call(context, builder);
+		Mockito.verify(resource).getQueryParam(eq(1));
+	}
+
+	/*@Test
+	public void should_inject_string_to_query_param() throws NoSuchMethodException {
+		DefaultResourceMethod resourceMethod = getResourceMethod("getQueryParam", String.class);
+		parameters.put("query", List.of("query"));
+
+		resourceMethod.call(context, builder);
+
+		Mockito.verify(resource).getQueryParam(eq("query"));
+	}
+
+	@Test
+	public void should_inject_int_to_query_param() throws NoSuchMethodException {
+		DefaultResourceMethod resourceMethod = getResourceMethod("getQueryParam", int.class);
+		parameters.put("query ", List.of("1"));
+
+		resourceMethod.call(context, builder);
+
+		Mockito.verify(resource).getQueryParam(eq(1));
+	}*/
 
 	// TODO using default converters for path, matrix, query(uri) form, header, cookie (request)
 	// TODO default converters for int, short, float,double, byte, char, String, and boolean
@@ -128,5 +153,8 @@ public class DefaultResourceMethodTest {
 
 		@GET
 		String getQueryParam(@QueryParam("query") String value);
+		@GET
+		String getQueryParam(@QueryParam("query") int value);
+
 	}
 }

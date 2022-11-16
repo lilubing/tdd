@@ -11,11 +11,17 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 
+import javax.swing.text.html.Option;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static java.util.Arrays.stream;
+import static llb.tdd.di.DefaultResourceMethod.ValueConverter.singeValued;
 
 /**
  * @author LiLuBing
@@ -50,7 +56,7 @@ class DefaultResourceRouter implements ResourceRouter {
 		Optional<ResourceMethod> method = UriHandlers.mapMatched(path, rootResources, (result, resource) -> findResourceMethod(request, resourceContext, uri, result, resource));
 		if (method.isEmpty()) return (OutboundResponse) Response.status(Response.Status.NOT_FOUND).build();
 		return (OutboundResponse) method.map(m -> m.call(resourceContext, uri))
-				.map(entity -> (entity.getEntity() instanceof  Response) ? (OutboundResponse) entity.getEntity() : Response.ok(entity).build())
+				.map(entity -> (entity.getEntity() instanceof OutboundResponse) ? (OutboundResponse) entity.getEntity() : Response.ok(entity).build())
 				.orElseGet(() -> Response.noContent().build());
 	}
 	private Optional<ResourceMethod> findResourceMethod(HttpServletRequest request, ResourceContext resourceContext, UriInfoBuilder uri, Optional<UriTemplate.MatchResult> matched, Resource handler) {
@@ -59,6 +65,7 @@ class DefaultResourceRouter implements ResourceRouter {
 	}
 }
 
+
 class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 	private String httpMethod;
 	private UriTemplate uriTemplate;
@@ -66,7 +73,7 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 	public DefaultResourceMethod(Method method) {
 		this.method = method;
 		this.uriTemplate = new PathTemplate(Optional.ofNullable(method.getAnnotation(Path.class)).map(Path::value).orElse(""));
-		this.httpMethod = Arrays.stream(method.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(HttpMethod.class))
+		this.httpMethod = stream(method.getAnnotations()).filter(a -> a.annotationType().isAnnotationPresent(HttpMethod.class))
 				.findFirst().get().annotationType().getAnnotation(HttpMethod.class).value();
 	}
 	@Override
@@ -81,25 +88,41 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 	public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
 		try {
 			UriInfo uriInfo = builder.createUriInfo();
-			Object[] parameters = Arrays.stream(method.getParameters()).map(parameter -> {
-				List<String> values;
-				if (parameter.isAnnotationPresent(PathParam.class)) {
-					String name = parameter.getAnnotation(PathParam.class).value();
-					values = uriInfo.getPathParameters().get(name);
-				} else {
-					String name = parameter.getAnnotation(QueryParam.class).value();
-					values = uriInfo.getPathParameters().get(name);
-				}
-				String value = values.get(0);
-				if (parameter.getType() == int.class) return Integer.parseInt(value);
-				return value;
-			}).collect(Collectors.toList()).toArray(Object[]::new);
-			Object result = method.invoke(builder.getLastMatchedResource(), parameters);
-			return result!= null ? new GenericEntity<>(result, method.getGenericReturnType()) : null;
+			Object result = method.invoke(builder.getLastMatchedResource(),
+					stream(method.getParameters()).map(parameter ->
+							providers.stream().map(provider -> provider.provide(parameter, uriInfo)).filter(Optional::isPresent)
+									.findFirst()
+									.flatMap(values -> values.map(v -> converters.get(parameter.getType()).fromString(v)))
+									.orElse(null)).toArray(Object[]::new));
+			return result != null ? new GenericEntity<>(result, method.getGenericReturnType()) : null;
 		} catch (IllegalAccessException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}
 	}
+
+	private static ValueProvider pathParam = (parameter, uriInfo) ->
+			Optional.ofNullable(parameter.getAnnotation(PathParam.class))
+					.map(annotation -> uriInfo.getPathParameters().get(annotation.value()));
+
+	private static ValueProvider queryParam = (parameter, uriInfo) ->
+			Optional.ofNullable(parameter.getAnnotation(QueryParam.class))
+					.map(annotation -> uriInfo.getQueryParameters().get(annotation.value()));
+
+	private static List<ValueProvider> providers = List.of(pathParam, queryParam);
+	interface ValueProvider {
+		Optional<List<String>> provide(Parameter parameter, UriInfo uriInfo);
+	}
+	interface ValueConverter<T> {
+		T fromString(List<String> values);
+		static <T> ValueConverter<T> singeValued(Function<String, T> converter) {
+			return values -> converter.apply(values.get(0));
+		}
+	}
+	private static Map<Type, ValueConverter<?>> converters = Map.of(
+			int.class, singeValued(Integer::parseInt),
+			String.class, singeValued(s -> s));
+
+
 	@Override
 	public String toString() {
 		return method.getDeclaringClass().getSimpleName() + "." + method.getName();
@@ -111,7 +134,7 @@ class ResourceMethods {
 		this.resourceMethods = getResourceMethods(methods);
 	}
 	private static Map<String, List<ResourceRouter.ResourceMethod>> getResourceMethods(Method[] methods) {
-		return Arrays.stream(methods).filter(m -> Arrays.stream(m.getAnnotations())
+		return stream(methods).filter(m -> stream(m.getAnnotations())
 						.anyMatch(a -> a.annotationType().isAnnotationPresent(HttpMethod.class)))
 				.map(DefaultResourceMethod::new)
 				.collect(Collectors.groupingBy(ResourceRouter.ResourceMethod::getHttpMethod));
@@ -134,7 +157,7 @@ class ResourceMethods {
 		}
 		@Override
 		public String getHttpMethod() {
-			return null;
+			return HttpMethod.OPTIONS;
 		}
 		@Override
 		public GenericEntity<?> call(ResourceContext resourceContext, UriInfoBuilder builder) {
@@ -150,7 +173,7 @@ class ResourceMethods {
 		}
 		@Override
 		public UriTemplate getUriTemplate() {
-			return null;
+			return new PathTemplate(path);
 		}
 	}
 }
@@ -176,8 +199,8 @@ class HeadResourceMethod implements ResourceRouter.ResourceMethod {
 class SubResourceLocators {
 	private final List<ResourceRouter.Resource> subResourceLocators;
 	public SubResourceLocators(Method[] methods) {
-		subResourceLocators = Arrays.stream(methods).filter(m -> m.isAnnotationPresent(Path.class) &&
-						Arrays.stream(m.getAnnotations()).noneMatch(a -> a.annotationType().isAnnotationPresent(HttpMethod.class)))
+		subResourceLocators = stream(methods).filter(m -> m.isAnnotationPresent(Path.class) &&
+						stream(m.getAnnotations()).noneMatch(a -> a.annotationType().isAnnotationPresent(HttpMethod.class)))
 				.map((Function<Method, ResourceRouter.Resource>) SubResourceLocator::new).toList();
 	}
 	public Optional<ResourceRouter.ResourceMethod> findSubResourceMethods(String path, String method, String[] mediaTypes, ResourceContext resourceContext, UriInfoBuilder builder) {
@@ -215,6 +238,7 @@ class ResourceHandler implements ResourceRouter.Resource {
 	private ResourceMethods resourceMethods;
 	private SubResourceLocators subResourceLocators;
 	private Function<ResourceContext, Object> resource;
+
 
 	public ResourceHandler(Class<?> resourceClass) {
 		this(resourceClass, new PathTemplate(getTemplate(resourceClass)), rc -> rc.getResource(resourceClass));
