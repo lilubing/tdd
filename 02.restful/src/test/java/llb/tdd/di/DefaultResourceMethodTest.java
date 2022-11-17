@@ -13,6 +13,7 @@ import org.mockito.Mockito;
 
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -97,7 +98,12 @@ public class DefaultResourceMethodTest {
 		List<InjectableTypeTestCase> typeCases = List.of(
 				new InjectableTypeTestCase(String.class, "string", "string"),
 				new InjectableTypeTestCase(int.class, "1", 1),
-				new InjectableTypeTestCase(double.class, "3.25", 3.25)
+				new InjectableTypeTestCase(double.class, "3.25", 3.25),
+				new InjectableTypeTestCase(float.class, "3.25", 3.25f),
+				new InjectableTypeTestCase(short.class, "128", (short) 128),
+				new InjectableTypeTestCase(byte.class, "42", (byte) 42),
+				new InjectableTypeTestCase(boolean.class, "true", true),
+				new InjectableTypeTestCase(BigDecimal.class, "12345", new BigDecimal("12345"))
 		);
 		List<String> paramTypes = List.of("getPathParam", "getQueryParam");
 		for (String type : paramTypes) {
@@ -151,6 +157,17 @@ public class DefaultResourceMethodTest {
 		String getPathParam(@PathParam("param") double value);
 
 		@GET
+		String getPathParam(@PathParam("param") float value);
+		@GET
+		String getPathParam(@PathParam("param") short value);
+		@GET
+		String getPathParam(@PathParam("param") byte value);
+		@GET
+		String getPathParam(@PathParam("param") boolean value);
+		@GET
+		String getPathParam(@PathParam("param") BigDecimal value);
+
+		@GET
 		String getQueryParam(@QueryParam("param") String value);
 
 		@GET
@@ -158,6 +175,15 @@ public class DefaultResourceMethodTest {
 
 		@GET
 		String getQueryParam(@QueryParam("param") double value);
-
+		@GET
+		String getQueryParam(@QueryParam("param") float value);
+		@GET
+		String getQueryParam(@QueryParam("param") byte value);
+		@GET
+		String getQueryParam(@QueryParam("param") short value);
+		@GET
+		String getQueryParam(@QueryParam("param") boolean value);
+		@GET
+		String getQueryParam(@QueryParam("param") BigDecimal value);
 	}
 }

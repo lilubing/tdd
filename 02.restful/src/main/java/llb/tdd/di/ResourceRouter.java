@@ -11,11 +11,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 
-import javax.swing.text.html.Option;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -92,7 +88,7 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 					stream(method.getParameters()).map(parameter ->
 							providers.stream().map(provider -> provider.provide(parameter, uriInfo)).filter(Optional::isPresent)
 									.findFirst()
-									.flatMap(values -> values.map(v -> converters.get(parameter.getType()).fromString(v)))
+									.flatMap(values -> values.flatMap(v -> convert(parameter, v)))
 									.orElse(null)).toArray(Object[]::new));
 			return result != null ? new GenericEntity<>(result, method.getGenericReturnType()) : null;
 		} catch (IllegalAccessException | InvocationTargetException e) {
@@ -100,14 +96,17 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 		}
 	}
 
+	private Optional<Object> convert(Parameter parameter, List<String> values) {
+		return PrimitiveConverter.convert(parameter, values)
+				.or(() -> ConverterConstructor.convert(parameter.getType(), values.get(0)));
+	}
+
 	private static ValueProvider pathParam = (parameter, uriInfo) ->
 			Optional.ofNullable(parameter.getAnnotation(PathParam.class))
 					.map(annotation -> uriInfo.getPathParameters().get(annotation.value()));
-
 	private static ValueProvider queryParam = (parameter, uriInfo) ->
 			Optional.ofNullable(parameter.getAnnotation(QueryParam.class))
 					.map(annotation -> uriInfo.getQueryParameters().get(annotation.value()));
-
 	private static List<ValueProvider> providers = List.of(pathParam, queryParam);
 	interface ValueProvider {
 		Optional<List<String>> provide(Parameter parameter, UriInfo uriInfo);
@@ -118,16 +117,39 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 			return values -> converter.apply(values.get(0));
 		}
 	}
-	private static Map<Type, ValueConverter<?>> converters = Map.of(
-			int.class, singeValued(Integer::parseInt),
-			double.class, singeValued(Double::parseDouble),
-			String.class, singeValued(s -> s)
-			);
 
 
 	@Override
 	public String toString() {
 		return method.getDeclaringClass().getSimpleName() + "." + method.getName();
+	}
+}
+
+class PrimitiveConverter {
+
+	private static Map<Type, DefaultResourceMethod.ValueConverter<Object>> primitives = Map.of(
+			int.class, singeValued(Integer::parseInt),
+			double.class, singeValued(Double::parseDouble),
+			short.class, singeValued(Short::parseShort),
+			float.class, singeValued(Float::parseFloat),
+			byte.class, singeValued(Byte::parseByte),
+			boolean.class, singeValued(Boolean::parseBoolean),
+			String.class, singeValued(s -> s));
+
+	public static Optional<Object> convert(Parameter parameter, List<String> values) {
+				return Optional.ofNullable(primitives.get(parameter.getType()))
+						.map(c -> c.fromString(values));
+			}
+}
+
+class ConverterConstructor {
+
+	public static Optional<Object> convert(Class<?> converter, String value) {
+		try {
+			return Optional.of(converter.getConstructor(String.class).newInstance(value));
+		} catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+			return Optional.empty();
+		}
 	}
 }
 class ResourceMethods {
