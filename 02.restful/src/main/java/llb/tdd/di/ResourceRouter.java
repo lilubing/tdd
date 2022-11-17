@@ -120,7 +120,9 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 	}
 	private static Map<Type, ValueConverter<?>> converters = Map.of(
 			int.class, singeValued(Integer::parseInt),
-			String.class, singeValued(s -> s));
+			double.class, singeValued(Double::parseDouble),
+			String.class, singeValued(s -> s)
+			);
 
 
 	@Override
