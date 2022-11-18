@@ -50,9 +50,11 @@ public class ResourceServletTest extends ServletTest {
 		router = Mockito.mock(ResourceRouter.class);
 		resourceContext = Mockito.mock(ResourceContext.class);
 		providers = Mockito.mock(Providers.class);
+
 		when(runtime.getResourceRouter()).thenReturn(router);
 		when(runtime.createResourceContext(any(), any())).thenReturn(resourceContext);
 		when(runtime.getProviders()).thenReturn(providers);
+
 		return new ResourceServlet(runtime);
 	}
 

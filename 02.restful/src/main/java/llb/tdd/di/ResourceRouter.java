@@ -85,7 +85,6 @@ class DefaultResourceMethod implements ResourceRouter.ResourceMethod {
 	}
 }
 
-
 class ResourceMethods {
 	private Map<String, List<ResourceRouter.ResourceMethod>> resourceMethods;
 	public ResourceMethods(Method[] methods) {
@@ -195,7 +194,6 @@ class ResourceHandler implements ResourceRouter.Resource {
 	private ResourceMethods resourceMethods;
 	private SubResourceLocators subResourceLocators;
 	private Function<ResourceContext, Object> resource;
-
 
 	public ResourceHandler(Class<?> resourceClass) {
 		this(resourceClass, new PathTemplate(getTemplate(resourceClass)), rc -> rc.getResource(resourceClass));
