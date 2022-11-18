@@ -29,12 +29,11 @@ public abstract class InjectableCallerTest {
 		lastCall = null;
 		resource = initResource();
 
-
 		resourceContext = Mockito.mock(ResourceContext.class);
 		builder = Mockito.mock(UriInfoBuilder.class);
 		uriInfo = Mockito.mock(UriInfo.class);
-		service = Mockito.mock(SomeServiceInContext.class);
 		parameters = new MultivaluedHashMap<>();
+		service = Mockito.mock(SomeServiceInContext.class);
 
 		Mockito.when(builder.getLastMatchedResource()).thenReturn(resource);
 		Mockito.when(builder.createUriInfo()).thenReturn(uriInfo);

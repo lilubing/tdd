@@ -61,16 +61,6 @@ public class DefaultResourceMethodTest extends InjectableCallerTest {
 		resourceMethod.call(resourceContext, builder);
 	}
 
-	// TODO using default converters for path, matrix, query(uri) form, header, cookie (request)
-	// TODO default converters for int, short, float,double, byte, char, String, and boolean
-	// TODO default converters for class with converter constructor
-	// TODO default converters for class with converter factory
-	// TODO default converters for List, Set, SortSet
-	// TODO injection - get injectable from resource context
-	// TODO injection - can inject resource context itself
-	// TODO injection - can inject uri info built from uri info builder
-
-
 	interface CallableResourceMethods {
 		@POST
 		void post();

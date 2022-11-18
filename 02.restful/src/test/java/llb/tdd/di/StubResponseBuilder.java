@@ -20,15 +20,17 @@ import static org.mockito.Mockito.when;
  * @Version V1.0
  */
 public class StubResponseBuilder extends Response.ResponseBuilder {
-	private int status;
 	private Object entity;
+	private int status;
+
 	private Set<String> allowed = new HashSet<>();
 
 	@Override
 	public Response build() {
 		OutboundResponse response = mock(OutboundResponse.class);
-		when(response.getStatus()).thenReturn(status);
 		when(response.getEntity()).thenReturn(entity);
+		when(response.getStatus()).thenReturn(status);
+		when(response.getStatusInfo()).thenReturn(Response.Status.fromStatusCode(status));
 		when(response.getAllowedMethods()).thenReturn(allowed);
 		when(response.getGenericEntity()).thenReturn((GenericEntity) entity);
 		when(response.getHeaders()).thenReturn(new MultivaluedHashMap<>());
@@ -41,7 +43,8 @@ public class StubResponseBuilder extends Response.ResponseBuilder {
 	}
 
 	@Override
-	public Response.ResponseBuilder status(int i) {
+	public Response.ResponseBuilder status(int status) {
+		this.status = status;
 		return this;
 	}
 

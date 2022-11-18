@@ -56,20 +56,19 @@ public class ResourceServlet extends HttpServlet {
 		body(resp, response, response.getGenericEntity());
 	}
 
+	private void body(HttpServletResponse resp, OutboundResponse response, GenericEntity entity) throws IOException {
+		if (entity == null) return;
+		MessageBodyWriter writer = providers.getMessageBodyWriter(entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType());
+		writer.writeTo(entity.getEntity(), entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType(),
+				response.getHeaders(), resp.getOutputStream());
+	}
+
 	private void headers(HttpServletResponse resp, MultivaluedMap<String, Object> headers) {
 		for (String name : headers.keySet()) {
 			for (Object value : headers.get(name)) {
 				RuntimeDelegate.HeaderDelegate headerDelegate = RuntimeDelegate.getInstance().createHeaderDelegate(value.getClass());
 				resp.addHeader(name, headerDelegate.toString(value));
 			}
-		}
-	}
-
-	private void body(HttpServletResponse resp, OutboundResponse response, GenericEntity entity) throws IOException {
-		if (entity != null) {
-			MessageBodyWriter writer = providers.getMessageBodyWriter(entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType());
-			writer.writeTo(entity.getEntity(), entity.getRawType(), entity.getType(), response.getAnnotations(), response.getMediaType(),
-					response.getHeaders(), resp.getOutputStream());
 		}
 	}
 

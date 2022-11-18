@@ -6,13 +6,20 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.container.ResourceContext;
-import jakarta.ws.rs.core.NewCookie;
+import jakarta.ws.rs.core.*;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.MessageBodyWriter;
 import jakarta.ws.rs.ext.Providers;
 import jakarta.ws.rs.ext.RuntimeDelegate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Objects;
@@ -28,18 +35,25 @@ public class IntegrationTest extends ServletTest {
 	private ResourceContext resourceContext;
 	private Providers providers;
 	private RuntimeDelegate delegate;
+	private UriInfo uriInfo;
 
 	@Override
 	protected Servlet getServlet() {
 		runtime = Mockito.mock(Runtime.class);
 		router = new DefaultResourceRouter(runtime, List.of(new ResourceHandler(UsersApi.class)));
-		router = Mockito.mock(ResourceRouter.class);
 		resourceContext = Mockito.mock(ResourceContext.class);
 		providers = Mockito.mock(Providers.class);
+		uriInfo = Mockito.mock(UriInfo.class);
 
 		when(runtime.getResourceRouter()).thenReturn(router);
+		when(runtime.createUriInfoBuilder(any())).thenReturn(new StubUriInfoBuilder(uriInfo));
 		when(runtime.createResourceContext(any(), any())).thenReturn(resourceContext);
 		when(runtime.getProviders()).thenReturn(providers);
+		when(resourceContext.getResource(eq(UsersApi.class))).thenReturn(new UsersApi());
+
+		MultivaluedHashMap<String, String> parameters = new MultivaluedHashMap<>();
+		parameters.put("id", List.of("john-smith"));
+		when(uriInfo.getPathParameters()).thenReturn(parameters);
 
 		return new ResourceServlet(runtime);
 	}
@@ -61,6 +75,28 @@ public class IntegrationTest extends ServletTest {
 				return value.getName() + "=" + value.getValue();
 			}
 		});
+
+		when(providers.getExceptionMapper(any())).thenReturn(new ExceptionMapper<Throwable>() {
+			@Override
+			public Response toResponse(Throwable exception) {
+				exception.printStackTrace();
+				return new StubResponseBuilder().status(500).build();
+			}
+		});
+
+		when(providers.getMessageBodyWriter(eq(String.class), eq(String.class), any(), any())).thenReturn(new MessageBodyWriter<>() {
+			@Override
+			public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
+				return true;
+			}
+
+			@Override
+			public void writeTo(String s, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws IOException, WebApplicationException {
+				PrintWriter writer = new PrintWriter(entityStream);
+				writer.write(s);
+				writer.flush();
+			}
+		});
 	}
 
 	// TODO get url (root/sub)
@@ -72,6 +108,19 @@ public class IntegrationTest extends ServletTest {
 		assertEquals(404, response.statusCode());
 	}
 
+	@Test
+	public void should_return_404_if_user_not_exist() {
+		HttpResponse<String> response = get("/user/zhang-san");
+		assertEquals(404, response.statusCode());
+	}
+
+	@Test
+	public void should_return_to_string_of_user_if_user_exist() {
+		HttpResponse<String> response = get("/users/john-smith");
+		assertEquals(200, response.statusCode());
+		assertEquals(new User("john-smith", new UserData("John Smith","john.smith@email.com")).toString(),
+				response.body());
+	}
 }
 
 record UserData(String name, String email) {
@@ -118,7 +167,7 @@ class UsersApi {
 		users = List.of(new User("john-smith", new UserData("John Smith","john.smith@email.com")));
 	}
 
-	@Path("{id}")
+	@Path("/{id}")
 	public UserApi findUserById(@PathParam("id") String id) {
 		return users.stream().filter(user -> user.getId().equals(id)).findFirst()
 				.map(UserApi::new).orElseThrow(() -> new WebApplicationException(404));
@@ -134,6 +183,6 @@ class UserApi {
 
 	@GET
 	public String get() {
-		return "";
+		return user.toString();
 	}
 }

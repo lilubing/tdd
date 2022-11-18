@@ -17,7 +17,13 @@ import java.util.List;
 class StubUriInfoBuilder implements UriInfoBuilder {
     private List<Object> matchedResult = new ArrayList<>();
 
+    private UriInfo uriInfo;
+
     public StubUriInfoBuilder() {
+    }
+
+    public StubUriInfoBuilder(UriInfo uriInfo) {
+        this.uriInfo = uriInfo;
     }
 
     @Override
@@ -32,6 +38,6 @@ class StubUriInfoBuilder implements UriInfoBuilder {
 
     @Override
     public UriInfo createUriInfo() {
-        return null;
+        return uriInfo;
     }
 }
