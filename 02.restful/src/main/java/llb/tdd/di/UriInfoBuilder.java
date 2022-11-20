@@ -2,6 +2,8 @@ package llb.tdd.di;
 
 import jakarta.ws.rs.core.UriInfo;
 
+import java.util.Map;
+
 /**
  * @author LiLuBing
  * @PackageName: llb.tdd.di
@@ -12,15 +14,12 @@ import jakarta.ws.rs.core.UriInfo;
  * @Version V1.0
  */
 public interface UriInfoBuilder {
-    /*void pushMatchedPath(String path);
-
-    void addParameter(String string, String value);
-
-    String getUnmatchedPath();*/
 
     Object getLastMatchedResource();
 
     void addMatchedResource(Object resource);
+
+    void addMatchedPathParameters(Map<String, String> pathParameters);
 
     UriInfo createUriInfo();
 }

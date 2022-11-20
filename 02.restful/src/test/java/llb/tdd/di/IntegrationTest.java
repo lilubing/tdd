@@ -1,5 +1,6 @@
 package llb.tdd.di;
 
+import jakarta.inject.Inject;
 import jakarta.servlet.Servlet;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -51,12 +52,11 @@ public class IntegrationTest extends ServletTest {
 		when(runtime.getProviders()).thenReturn(providers);
 		when(resourceContext.getResource(eq(UsersApi.class))).thenReturn(new UsersApi());
 
-		MultivaluedHashMap<String, String> parameters = new MultivaluedHashMap<>();
-		parameters.put("id", List.of("john-smith"));
-		when(uriInfo.getPathParameters()).thenReturn(parameters);
-
 		return new ResourceServlet(runtime);
 	}
+
+	// TODO supporting utils runtime, uriInfo, response builder, exception mapper, message body writer
+	// TODO Resource Context (DI)
 
 	@BeforeEach
 	public void before() {
@@ -99,9 +99,6 @@ public class IntegrationTest extends ServletTest {
 		});
 	}
 
-	// TODO get url (root/sub)
-	// TODO get url throw exception
-	// TODO get url inexist
 	@Test
 	public void should_return_404_if_url_inexist() {
 		HttpResponse<String> response = get("/customers");

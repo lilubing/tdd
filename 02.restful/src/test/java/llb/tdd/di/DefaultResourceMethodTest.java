@@ -14,8 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class DefaultResourceMethodTest extends InjectableCallerTest {
 
@@ -26,6 +25,9 @@ public class DefaultResourceMethodTest extends InjectableCallerTest {
 					lastCall = new LastCall(getMethodName(method.getName(),
 							Arrays.stream(method.getParameters()).map(Parameter::getType).toList()),
 							args != null ? List.of(args) : List.of());
+
+					if(method.getName().equals("throwWebApplicationException"))
+						throw new WebApplicationException(300);
 
 					return "getList".equals(method.getName()) ? new ArrayList<String>() : null;});
 	}
@@ -49,6 +51,18 @@ public class DefaultResourceMethodTest extends InjectableCallerTest {
 	public void should_call_resource_method_with_void_return_type() throws NoSuchMethodException {
 		DefaultResourceMethod resourceMethod = getResourceMethod("post");
 		assertNull(resourceMethod.call(resourceContext, builder));
+	}
+
+	@Test
+	public void should_not_wrap_around_web_application_exception() throws NoSuchMethodException {
+		parameters.put("param", List.of("param"));
+		try {
+			callInjectable("throwWebApplicationException", String.class);
+		} catch (WebApplicationException e) {
+			assertEquals(300, e.getResponse().getStatus());
+		} catch (Exception e) {
+			fail();
+		}
 	}
 
 	private DefaultResourceMethod getResourceMethod(String methodName, Class... types) throws NoSuchMethodException {
@@ -125,6 +139,9 @@ public class DefaultResourceMethodTest extends InjectableCallerTest {
 		String getContext(@Context ResourceContext context);
 		@GET
 		String getContext(@Context UriInfo context);
+
+		@GET
+		String throwWebApplicationException(@PathParam("param") String path);
 	}
 }
 

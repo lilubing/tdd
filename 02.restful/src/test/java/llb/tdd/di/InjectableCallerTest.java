@@ -3,6 +3,7 @@ package llb.tdd.di;
 import jakarta.ws.rs.container.ResourceContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.RuntimeDelegate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 public abstract class InjectableCallerTest {
 	protected DefaultResourceMethodTest.LastCall lastCall;
@@ -23,6 +25,7 @@ public abstract class InjectableCallerTest {
 	UriInfo uriInfo;
 	MultivaluedHashMap<String, String> parameters;
 	Object resource;
+	private RuntimeDelegate delegate;
 
 	@BeforeEach
 	public void before() {
@@ -40,6 +43,10 @@ public abstract class InjectableCallerTest {
 		Mockito.when(uriInfo.getPathParameters()).thenReturn(parameters);
 		Mockito.when(uriInfo.getQueryParameters()).thenReturn(parameters);
 		Mockito.when(resourceContext.getResource(SomeServiceInContext.class)).thenReturn(service);
+
+		delegate = Mockito.mock(RuntimeDelegate.class);
+		RuntimeDelegate.setInstance(delegate);
+		when(delegate.createResponseBuilder()).thenReturn(new StubResponseBuilder());
 	}
 
 	protected abstract Object initResource();
